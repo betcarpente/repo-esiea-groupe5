@@ -123,12 +123,39 @@ precede :
 
 ---
 
+## 3 bis. Qui peut modifier quoi
+
+Deux mecanismes complementaires, car ils ne font pas la meme chose :
+
+| Mecanisme | Ce qu'il fait | Ce qu'il ne fait pas |
+|---|---|---|
+| `.github/CODEOWNERS` | Assigne automatiquement les relecteurs et, avec « Require review from Code Owners », bloque le **merge** sans l'approbation du proprietaire du chemin | Il n'interdit a personne d'**ecrire** dans un fichier sur sa branche |
+| `.github/workflows/path-policy.yml` | Fait **echouer la PR** si son auteur touche un fichier hors de son perimetre | Rien s'il n'est pas declare en « required status check » |
+
+Perimetres retenus :
+
+- `docs/`, `README.md`, `.github/`, `.gitignore` : **betcarpente** uniquement
+- `*.py` et `*.txt` : perimetre de **Madaaaaaaaaaaaaaa** (elle ne peut pas
+  modifier autre chose)
+- le reste du depot : proprietaire par defaut **betcarpente**
+
+Les proprietaires doivent etre des collaborateurs du depot avec le droit
+**Write** : le depot n'appartenant pas a une organisation, on ne peut designer
+que des utilisateurs (`@pseudo`), pas des equipes (`@org/equipe`).
+
+Limite a connaitre : un **administrateur** du depot peut contourner ces regles
+s'il ne coche pas « Do not allow bypassing the above settings », et un push
+direct sur une branche non protegee n'est pas verifie.
+
 ## 4. Structure du depot
 
 ```
 .
 ├── .github/
-│   └── pull_request_template.md   # Template de PR, rempli a chaque PR
+│   ├── CODEOWNERS                 # Qui est responsable de quels chemins
+│   ├── pull_request_template.md   # Template de PR, rempli a chaque PR
+│   └── workflows/
+│       └── path-policy.yml       # Bloque une PR hors perimetre
 ├── docs/                          # Documentation, rapports, schemas
 ├── src/                           # Code source
 ├── tests/                         # Tests

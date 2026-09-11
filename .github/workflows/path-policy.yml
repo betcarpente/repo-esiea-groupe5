@@ -1,0 +1,74 @@
+name: Politique de chemins
+
+# CODEOWNERS n'exprime que des droits de RELECTURE, jamais une interdiction
+# d'ecrire. Ce workflow fait ce que CODEOWNERS ne sait pas faire : il echoue
+# si l'auteur d'une PR touche des fichiers en dehors de son perimetre.
+#
+# A declarer comme « required status check » dans la protection de main et
+# develop, sinon une PR en echec reste fusionnable.
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check-paths:
+    name: Verifier le perimetre de l'auteur
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lister les fichiers modifies
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --jq '.[].filename' > changed-files.txt
+          echo "Fichiers modifies par cette PR :"
+          cat changed-files.txt
+
+      - name: Appliquer la politique
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -euo pipefail
+          author="$(printf '%s' "$AUTHOR" | tr '[:upper:]' '[:lower:]')"
+          echo "Auteur de la PR : $AUTHOR"
+          violations=0
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            # Regle 1 : docs/ est reserve a betcarpente.
+            case "$file" in
+              docs/*)
+                if [ "$author" != "betcarpente" ]; then
+                  echo "::error file=$file::$file — seul @betcarpente peut modifier docs/"
+                  violations=$((violations + 1))
+                fi
+                ;;
+            esac
+
+            # Regle 2 : Madaaaaaaaaaaaaaa ne touche que du .py et du .txt.
+            if [ "$author" = "madaaaaaaaaaaaaaa" ]; then
+              case "$file" in
+                *.py|*.txt) ;;
+                *)
+                  echo "::error file=$file::$file — @Madaaaaaaaaaaaaaa ne peut modifier que des fichiers .py et .txt"
+                  violations=$((violations + 1))
+                  ;;
+              esac
+            fi
+          done < changed-files.txt
+
+          if [ "$violations" -gt 0 ]; then
+            echo ""
+            echo "$violations fichier(s) hors perimetre. Voir .github/CODEOWNERS"
+            echo "pour la repartition des responsabilites."
+            exit 1
+          fi
+
+          echo "Politique de chemins respectee."

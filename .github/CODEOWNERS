@@ -1,0 +1,40 @@
+# CODEOWNERS — groupe 5
+#
+# CE QUE CE FICHIER FAIT :
+#   - il assigne automatiquement les bons relecteurs sur chaque PR, selon les
+#     fichiers touches ;
+#   - combine avec « Require review from Code Owners » dans la protection de
+#     branche, il EMPECHE de fusionner une PR touchant ces chemins sans
+#     l'approbation du proprietaire.
+#
+# CE QUE CE FICHIER NE FAIT PAS :
+#   - il ne retire a personne le droit d'ECRIRE dans un fichier. Un
+#     collaborateur avec le role Write peut modifier n'importe quel fichier
+#     dans sa branche ; le controle se joue au moment du merge.
+#   - la politique « qui peut modifier quoi » est verifiee en plus par le
+#     workflow .github/workflows/path-policy.yml
+#
+# REGLES DE SYNTAXE :
+#   - un proprietaire doit etre un collaborateur du depot avec au moins le
+#     droit Write (les @org/equipe ne marchent que dans une organisation) ;
+#   - la DERNIERE regle qui correspond a un fichier gagne : l'ordre compte.
+
+# --- 1. Regle par defaut : tout le depot ---------------------------------
+# Toute PR necessite l'approbation de betcarpente, quoi qu'elle touche.
+*                       @betcarpente
+
+# --- 2. Code Python et fichiers texte ------------------------------------
+# Perimetre de Madaaaaaaaaaaaaaa : elle est co-proprietaire, donc relectrice
+# attendue, sur ces fichiers.
+*.py                    @betcarpente @Madaaaaaaaaaaaaaa
+*.txt                   @betcarpente @Madaaaaaaaaaaaaaa
+
+# --- 3. Documentation : betcarpente uniquement ---------------------------
+# Place en dernier pour gagner sur les regles ci-dessus (un docs/notes.txt
+# reste sous la seule responsabilite de betcarpente).
+/docs/                  @betcarpente
+/README.md              @betcarpente
+
+# --- 4. Configuration du depot : betcarpente uniquement ------------------
+/.github/               @betcarpente
+/.gitignore             @betcarpente
