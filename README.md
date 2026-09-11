@@ -92,8 +92,12 @@ Une PR ne peut etre fusionnee que si **toutes** ces conditions sont reunies :
 | Cible | Methode | Raison |
 |---|---|---|
 | `feature/*`, `fix/*`, `docs/*`, `chore/*` vers `develop` | **Squash and merge** | Un commit propre par contribution, historique de `develop` lisible |
-| `release/*` ou `hotfix/*` vers `main` | **Merge commit** (pas de squash) | On conserve la tracabilite complete de la livraison |
-| `main` vers `develop` (apres une release/hotfix) | **Merge commit** | Reinjecte les correctifs dans la branche d'integration |
+| `release/*` ou `hotfix/*` vers `main` | **Squash and merge** | `main` impose un historique **lineaire** (section 3) : GitHub y refuse les merge commits. La tracabilite d'une livraison est portee par le tag `vX.Y.Z`, pas par un commit de merge |
+| `main` vers `develop` (apres une release/hotfix) | **Rebase** (`git rebase origin/main`) | Reinjecte les correctifs sans creer de merge commit |
+
+> Ce choix decoule de l'option « Require linear history » activee sur `main` et
+> `develop` : merge commits et historique lineaire sont incompatibles, il fallait
+> trancher. On garde donc le squash partout.
 
 La branche source est **supprimee apres le merge** (option GitHub
 « Automatically delete head branches »).
@@ -113,13 +117,49 @@ perdue a la release suivante.
 Les reglages a appliquer sur `main` et `develop` decoulent directement de ce qui
 precede :
 
+### Sur les branches `main` et `develop`
+
 - Require a pull request before merging
 - Require approvals : **1**
 - Dismiss stale pull request approvals when new commits are pushed
+- Require review from **Code Owners** (active `.github/CODEOWNERS`)
 - Require conversation resolution before merging
 - Require branches to be up to date before merging
-- Require status checks to pass (une fois la CI en place)
-- Bloquer les force push et les suppressions de branche
+- Require status checks to pass : `Verifier le perimetre de l'auteur`
+- **Require linear history** (d'ou le squash systematique, section 2)
+- **Do not allow bypassing the above settings** — sans cette case, les
+  administrateurs du depot (dont le proprietaire) continuent de pousser
+  directement sur `main` : c'est le piege classique
+- Allow force pushes / Allow deletions : **decoches**
+
+Une regle de protection classique ne porte qu'**un seul motif de branche** : il
+faut donc une regle pour `main` et une pour `develop` (ou un ruleset unique
+ciblant les deux). Le champ « Branch name pattern » est bien un motif de nom de
+branche, pas un nom de regle.
+
+### Sur les tags de release
+
+La protection des tags ne se fait pas dans la protection de branche, mais via
+un **ruleset de tags** (Settings > Rules > Rulesets > New tag ruleset) :
+
+- motif cible : `v*`
+- Restrict deletions : un tag `v1.0.0` ne peut plus etre supprime
+- Block force pushes : il ne peut plus etre deplace sur un autre commit
+
+### Verification (a faire, pas seulement a cocher)
+
+```bash
+# 1. Push direct sur main -> doit echouer avec "GH006: Protected branch update failed"
+git checkout main && git pull
+echo test >> test-protection.txt
+git add test-protection.txt && git commit -m "test: push direct interdit"
+git push origin main
+git reset --hard origin/main   # nettoyage
+
+# 2. Suppression d'un tag protege -> doit etre refusee
+git tag -a v1.0.0 -m "Version 1.0.0" && git push origin v1.0.0
+git push origin :refs/tags/v1.0.0
+```
 
 ---
 
@@ -156,6 +196,8 @@ direct sur une branche non protegee n'est pas verifie.
 │   ├── pull_request_template.md   # Template de PR, rempli a chaque PR
 │   └── workflows/
 │       └── path-policy.yml       # Bloque une PR hors perimetre
+├── hooks/
+│   └── pre-commit                 # Refuse un commit contenant un secret
 ├── docs/                          # Documentation, rapports, schemas
 ├── src/                           # Code source
 ├── tests/                         # Tests
@@ -183,6 +225,95 @@ meme s'il est supprime ensuite.
 Un fichier `.env.example` (sans valeur reelle) peut etre versionne pour
 documenter les variables attendues : il est explicitement autorise par le
 `.gitignore`.
+
+---
+
+## 4 bis. Securite locale : hook pre-commit et signature
+
+Les regles de la section 3 sont appliquees **par GitHub**, donc au plus tot au
+moment du push. Les deux mecanismes ci-dessous agissent en amont, **sur le poste
+de chacun**.
+
+### Le hook `pre-commit`
+
+`hooks/pre-commit` est execute par Git avant la creation de chaque commit. Il
+inspecte **les lignes ajoutees** dans l'index et refuse le commit s'il detecte :
+
+| Detection | Exemples |
+|---|---|
+| Cle d'acces AWS | `AKIA` + 16 caracteres |
+| Token GitHub | `ghp_...`, `gho_...` |
+| Cle d'API Google, token Slack | `AIza...`, `xoxb-...` |
+| Cle privee | `-----BEGIN ... PRIVATE KEY-----` |
+| Mot de passe en dur | `password = "..."`, `api_key: "..."` |
+| URL avec identifiants | `postgres://user:motdepasse@host` | <!-- pragma: allowlist secret -->
+| Fichier sensible | `.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json` |
+
+**Installation — a faire une fois par personne apres le clone :**
+
+```bash
+git config core.hooksPath hooks
+chmod +x hooks/pre-commit   # inutile sous Windows
+```
+
+`.git/hooks/` n'est **ni versionne ni clone** : c'est pour cela que le script
+vit dans `hooks/` (suivi par Git) et que `core.hooksPath` l'y redirige. Sans
+cette commande, le hook n'existe pas chez toi.
+
+**Test (le commit doit etre refuse) :**
+
+```bash
+echo 'AWS_KEY = "AKIA................"' > src/faux_secret.py
+git add src/faux_secret.py
+git commit -m "test: faux secret"   # -> COMMIT REFUSE, code de sortie 1
+git reset && rm src/faux_secret.py
+```
+
+Faux positif assume : ajouter le marqueur `pragma: allowlist secret` en
+commentaire sur la ligne concernee.
+
+**Limites, a connaitre :** `git commit --no-verify` contourne le hook, et un
+hook reste local. C'est une premiere barriere, pas une garantie ; le pendant
+cote serveur est le *secret scanning / push protection* de GitHub, actif par
+defaut sur les depots publics. Et si un secret reel a fuite, le supprimer ne
+suffit jamais : il faut le **revoquer**.
+
+### Signature des commits
+
+Un auteur de commit n'est qu'un champ texte : n'importe qui peut committer sous
+le nom d'un autre. Signer un commit y attache une preuve cryptographique, que
+GitHub materialise par le badge **Verified**.
+
+Le badge n'apparait que si **les trois** conditions sont reunies : la cle
+existe, Git sait qu'il doit s'en servir, et la moitie publique est enregistree
+sur le compte GitHub. Un oubli sur l'une des trois donne un commit signe en
+local mais jamais verifie cote serveur.
+
+Version **SSH** (recommandee ici : on reutilise la cle qui sert deja a pousser) :
+
+```bash
+# 1. Une cle existe ? sinon : ssh-keygen -t ed25519 -C "moi@example.com"
+ls ~/.ssh/id_ed25519.pub
+
+# 2. Declarer la cle a Git comme cle de signature
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+
+# 3. Enregistrer la cle publique sur GitHub :
+#    Settings > SSH and GPG keys > New SSH key > Key type : **Signing Key**
+#    (c'est un second ajout, meme si la cle y figure deja en Authentication Key)
+cat ~/.ssh/id_ed25519.pub
+
+# Verification
+git commit --allow-empty -m "chore: test de signature"
+git log --show-signature -1
+```
+
+Version **GPG** : `gpg --list-secret-keys --keyid-format=long` pour recuperer
+l'identifiant de la cle, `git config --global user.signingkey <ID>`, puis
+`gpg --armor --export <ID>` et coller le resultat dans Settings > SSH and GPG
+keys > New GPG key.
 
 ---
 
