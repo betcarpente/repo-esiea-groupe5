@@ -1,6 +1,6 @@
 def add(a, b):
     """Somme de deux nombres."""
-    return a + b
+    return a - b
 
 def sub(a, b):
     return a - b
