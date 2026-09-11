@@ -1,29 +1,10 @@
 # repo-esiea-groupe5
 
-Projet du cours DevOps (ESIEA, 5e annee) — Groupe 5.
-
-Ce README fait foi : toute personne qui rejoint le groupe doit pouvoir y trouver
-la strategie de branches, la convention de nommage et la regle de merge sans
-avoir a redemander.
+Projet du cours DevOps (groupe 5)
 
 ---
 
 ## 1. Strategie de branches retenue : Git Flow
-
-Apres discussion, le groupe a choisi **Git Flow** (et non le trunk-based
-development).
-
-**Pourquoi ce choix :**
-
-- Le projet est rendu par lots (etapes notees), pas deploye en continu : on a
-  besoin d'une branche stable qui represente le rendu, distincte de la branche
-  de travail quotidien.
-- Nous sommes plusieurs a travailler en parallele sur des sujets differents ;
-  des branches thematiques limitent les conflits.
-- Le flux impose une PR pour chaque contribution, ce qui est exactement ce que
-  l'exercice demande (relecture, protection de branche, historique lisible).
-- Le trunk-based supposerait des merges tres frequents sur `main` avec des
-  feature flags et une CI solide : disproportionne a l'echelle du projet.
 
 ### Les branches
 
@@ -35,18 +16,6 @@ development).
 | `fix/*` | Correction d'un bug non urgent. Part de `develop`. | Ephemere |
 | `hotfix/*` | Correction urgente sur du code deja en `main`. Part de `main`. | Ephemere |
 | `release/*` | Preparation d'une livraison (gel, version). Part de `develop`. | Ephemere |
-| `docs/*` | Documentation seule (README, rapports, schemas). Part de `develop`. | Ephemere |
-| `chore/*` | Maintenance : config, CI, dependances, .gitignore. Part de `develop`. | Ephemere |
-
-```
-main      --*-----------------*--------------*-->    (versions rendues)
-             \               /   \          /
-release       \          *--*     \     *--*         (release/1.0.0)
-               \        /          \   /
-develop   --*---*--*---*------------*-*--------->    (integration)
-             \ /    \ /
-feature       *      *                               (feature/xxx, fix/xxx)
-```
 
 ### Convention de nommage des branches
 
@@ -217,4 +186,7 @@ git branch -d feature/ma-fonctionnalite
 
 | Nom | Role |
 |---|---|
-| _a completer_ | _a completer_ |
+| betcarpente | Owner |
+| Antonin | Maintainer |
+| Enzo | Maintainer |
+| Salomé | Maintainer |
