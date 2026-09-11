@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+#
+# Hook pre-commit — groupe 5
+#
+# Refuse un commit qui contient un secret evident (cle d'API, mot de passe,
+# cle privee) ou un fichier sensible. Un secret entre dans l'historique en
+# une seconde et met une reecriture d'historique complete a en sortir.
+#
+# Installation (une fois par personne, apres le clone) :
+#     git config core.hooksPath hooks
+#
+# Echappatoire volontaire, pour un faux positif assume : ajouter le
+# marqueur  pragma: allowlist secret  en commentaire sur la ligne.
+
+set -uo pipefail
+
+# --- Motifs de secrets -----------------------------------------------------
+# Un motif par entree : "description|regex etendue"
+PATTERNS=(
+  "Cle d'acces AWS|AKIA[0-9A-Z]{16}"
+  "Token GitHub|gh[pousr]_[A-Za-z0-9]{20,}"
+  "Cle d'API Google|AIza[0-9A-Za-z_-]{30,}"
+  "Token Slack|xox[abprs]-[0-9A-Za-z-]{10,}"
+  "Cle privee|-----BEGIN[A-Z ]*PRIVATE KEY-----"
+  "Mot de passe en dur|(password|passwd|pwd|secret|token|api[_-]?key)[[:space:]]*[:=][[:space:]]*[\"'][^\"']{6,}[\"']"
+  "URL avec identifiants|[a-z]+://[^/[:space:]]+:[^@[:space:]]+@"
+)
+
+# --- Fichiers a ne jamais committer ---------------------------------------
+FORBIDDEN_FILES='(^|/)(\.env(\..*)?$|id_rsa$|id_ed25519$|credentials\.json$)|\.(pem|key|p12|pfx)$'
+
+violations=0
+
+report() {
+  echo "  [$1] $2:$3"
+  echo "      $4"
+  violations=$((violations + 1))
+}
+
+# Fichiers ajoutes ou modifies dans l'index (A = added, C = copied, M = modified)
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
+
+for file in $staged; do
+  # .env.example est volontairement versionne (valeurs factices)
+  if [ "$file" != ".env.example" ] && echo "$file" | grep -Eq "$FORBIDDEN_FILES"; then
+    echo "  [Fichier sensible] $file"
+    echo "      ce type de fichier ne doit jamais etre versionne"
+    violations=$((violations + 1))
+    continue
+  fi
+
+  # On ignore le hook lui-meme : il contient les motifs par construction
+  case "$file" in
+    hooks/pre-commit) continue ;;
+  esac
+
+  # On ignore les fichiers binaires
+  if ! git diff --cached --numstat -- "$file" | grep -qv '^-' ; then
+    continue
+  fi
+
+  # Uniquement les lignes AJOUTEES, avec leur numero de ligne
+  added="$(git diff --cached -U0 -- "$file" \
+    | awk '/^@@/ { match($0, /\+[0-9]+/); n = substr($0, RSTART+1, RLENGTH-1); next }
+           /^\+\+\+/ { next }
+           /^\+/ { print n": "substr($0, 2); n++ }')"
+
+  [ -z "$added" ] && continue
+
+  while IFS= read -r line; do
+    # Echappatoire explicite
+    case "$line" in
+      *"pragma: allowlist secret"*) continue ;;
+    esac
+
+    lineno="${line%%: *}"
+    content="${line#*: }"
+
+    for entry in "${PATTERNS[@]}"; do
+      label="${entry%%|*}"
+      regex="${entry#*|}"
+      if echo "$content" | grep -Eqi -- "$regex"; then
+        report "$label" "$file" "$lineno" "$(echo "$content" | cut -c1-100)"
+        break
+      fi
+    done
+  done <<< "$added"
+done
+
+if [ "$violations" -gt 0 ]; then
+  echo ""
+  echo "COMMIT REFUSE : $violations secret(s) potentiel(s) detecte(s)."
+  echo ""
+  echo "  - retire la valeur du code et passe par une variable d'environnement"
+  echo "    (voir .env.example, et .env est ignore par git) ;"
+  echo "  - si le secret est reel et a deja ete expose quelque part, REVOQUE-LE :"
+  echo "    le supprimer ne suffit pas ;"
+  echo "  - faux positif assume ? ajoute  pragma: allowlist secret  sur la ligne."
+  echo ""
+  exit 1
+fi
+
+exit 0
