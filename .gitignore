@@ -283,3 +283,5 @@ temp/
 *.sqlite3
 *.db
 data/raw/
+
+*.md
