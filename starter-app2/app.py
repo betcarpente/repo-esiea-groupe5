@@ -19,10 +19,10 @@ def sanitize_input(value):
 def health():
     return jsonify(status="ok"), 200
 
-# faute volontaire dans le nom de la route pour tester le workflow
+
 @app.route("/status")
 def status():
-    return jsonify(service="projet-devops-groupe-demo", version="1.0", description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas eu metus id tortor elementum dapibus. Orci varius natoque penatibus et magnis dis parturient montes"), 200
+    return jsonify(service="projet-devops-groupe-demo", version="1.0"), 200
 
 
 if __name__ == "__main__":
