@@ -1,2 +1,0 @@
-TIMEOUT = 120
-RETRIES = 3
