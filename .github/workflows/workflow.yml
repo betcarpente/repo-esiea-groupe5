@@ -7,8 +7,7 @@ on:
   pull_request:
 
 jobs:
-  build:
-    # run on github hosted ubuntu runner
+  lint:
     runs-on: ubuntu-latest
     
     steps:
@@ -22,11 +21,38 @@ jobs:
       - name: Create virtual environment
         run: python -m venv venv
       
-      # Install dependencies and run tests
-      - name: Install dependencies and run tests
+      - name: Install dependencies
         run: |
           source venv/bin/activate
           pip install -r starter-app2/requirements.txt
-          pytest -v
-          flake8 . --max-line-length=100 --exclude=venv
+      
+      - name: Run flake8
+        run: |
+          source venv/bin/activate
+          flake8 starter-app2 --max-line-length=100 --exclude=venv
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Create virtual environment
+        run: python -m venv venv
+      
+      - name: Install dependencies
+        run: |
+          source venv/bin/activate
+          pip install -r starter-app2/requirements.txt
+      
+      - name: Run pytest
+        run: |
+          source venv/bin/activate
+          pytest -v starter-app2
 
