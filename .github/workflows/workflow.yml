@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    # run on github hosted ubuntu runner
     runs-on: ubuntu-latest
     
     steps:
@@ -21,7 +22,9 @@ jobs:
       - name: Create virtual environment
         run: python -m venv venv
       
-      - name: Activate virtual environment and install dependencies
+      # Install dependencies and run tests
+      - name: Install dependencies and run tests
         run: |
           source venv/bin/activate
           pip install -r starter-app2/requirements.txt
+          pytest -v
