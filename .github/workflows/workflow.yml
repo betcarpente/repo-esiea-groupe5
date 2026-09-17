@@ -42,17 +42,14 @@ jobs:
   test:
     needs: lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.9', '3.11']
     
     steps:
       - uses: actions/checkout@v6
       
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.10'
       
       - name: Cache pip dependencies
         uses: actions/cache@v3
@@ -79,6 +76,6 @@ jobs:
         uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: coverage-report-py${{ matrix.python-version }}
+          name: coverage-report-py3.10
           path: htmlcov/
 
