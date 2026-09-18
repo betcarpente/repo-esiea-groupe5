@@ -1,3 +1,6 @@
+import os
+
+import redis
 from flask import Flask, jsonify
 
 app = Flask(__name__)
@@ -15,6 +18,14 @@ def sanitize_input(value):
     return value.replace("<", "&lt;").replace(">", "&gt;")
 
 
+def get_redis_client():
+    return redis.Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", "6379")),
+        decode_responses=True,
+    )
+
+
 @app.route("/health")
 def health():
     return jsonify(status="ok"), 200
@@ -23,6 +34,12 @@ def health():
 @app.route("/status")
 def status():
     return jsonify(service="projet-devops-groupe-demo", version="1.0"), 200
+
+
+@app.route("/visits")
+def visits():
+    count = get_redis_client().incr("visits")
+    return jsonify(visits=count), 200
 
 
 if __name__ == "__main__":
