@@ -348,3 +348,68 @@ git branch -d feature/ma-fonctionnalite
 | Antonin | Maintainer |
 | Enzo | Maintainer |
 | Salomé | Maintainer |
+
+---
+
+## 7. Atelier 3 - Conteneurisation Docker
+
+L'application de demonstration se trouve dans `starter-app/`. Elle est
+conteneurisee avec un Dockerfile multi-stage : les dependances d'execution sont
+installees dans un environnement virtuel dans le stage `builder`, puis seules
+ces dependances et `app.py` sont copiees dans l'image finale `python:3.12-slim`.
+Le conteneur s'execute avec l'utilisateur non-root `noa` et demarre Gunicorn sur
+le port 5000.
+
+### Prerequis locaux
+
+Docker Desktop doit etre demarre et le daemon Docker doit etre accessible :
+
+```bash
+docker version
+docker compose version
+docker run --rm hello-world
+```
+
+### Construire et lancer
+
+Depuis le dossier `starter-app/` :
+
+```bash
+# Construire l'image applicative
+docker build -t projet-devops-groupe5:local .
+
+# Demarrer Flask, Redis et le volume persistant Redis
+docker compose up --build
+```
+
+Dans un second terminal, les endpoints peuvent etre verifies ainsi :
+
+```bash
+curl http://localhost:5000/health
+curl http://localhost:5000/status
+curl http://localhost:5000/visits
+```
+
+Pour verifier la sante des conteneurs et l'utilisateur d'execution :
+
+```bash
+docker compose ps
+docker compose exec web whoami
+```
+
+Le service `web` se connecte a Redis avec les variables `REDIS_HOST=redis` et
+`REDIS_PORT=6379`. Les donnees de Redis sont conservees dans le volume nomme
+`redis-data`; le compteur `/visits` persiste donc apres le redemarrage du seul
+conteneur `web`.
+
+### Image sur un registry
+
+L'image n'est pas encore publiee sur un registry. Cette publication reste a
+faire pour finaliser l'atelier 3 et sera indispensable a l'atelier 4 : le job
+CI `build-and-push` y publiera une image immuable taguee avec le SHA du commit,
+en plus de `latest`, afin que le deploiement puisse recuperer exactement la
+version attendue.
+
+Apres avoir choisi Docker Hub ou GHCR et s'etre authentifie avec `docker login`,
+l'image pourra etre publiee avec un tag versionne et `latest`, puis verifiee par
+un `docker pull` apres suppression de l'image locale.
