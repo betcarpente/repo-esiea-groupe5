@@ -28,12 +28,24 @@ def get_redis_client():
 
 @app.route("/health")
 def health():
+    try:
+        redis_available = get_redis_client().ping()
+    except redis.RedisError:
+        redis_available = False
+
+    if not redis_available:
+        return jsonify(status="unavailable", dependency="redis"), 503
+
     return jsonify(status="ok"), 200
 
 
 @app.route("/status")
 def status():
-    return jsonify(service="projet-devops-groupe-demo", version="1.0"), 200
+    return jsonify(
+        service="projet-devops-groupe-demo",
+        version="1.0",
+        deploy_color=os.getenv("DEPLOY_COLOR", "unknown"),
+    ), 200
 
 
 @app.route("/visits")
