@@ -17,21 +17,32 @@ compose() {
   fi
 }
 
-if [ -f "$STATE_FILE" ]; then
+if [ -n "${DEPLOY_TARGET_COLOR:-}" ]; then
+  case "$DEPLOY_TARGET_COLOR" in
+    blue) inactive_color=blue; active_color=green ;;
+    green) inactive_color=green; active_color=blue ;;
+    *)
+      printf 'Invalid target color: %s\n' "$DEPLOY_TARGET_COLOR" >&2
+      exit 1
+      ;;
+  esac
+elif [ -f "$STATE_FILE" ]; then
   active_color=$(cat "$STATE_FILE")
+  case "$active_color" in
+    blue) inactive_color=green ;;
+    green) inactive_color=blue ;;
+    *)
+      printf 'Invalid active color in %s: %s\n' "$STATE_FILE" "$active_color" >&2
+      exit 1
+      ;;
+  esac
 elif grep -q "set \$upstream app-green;" "$NGINX_CONF"; then
   active_color=green
+  inactive_color=blue
 else
   active_color=blue
+  inactive_color=green
 fi
-case "$active_color" in
-  blue) inactive_color=green ;;
-  green) inactive_color=blue ;;
-  *)
-    printf 'Invalid active color in %s: %s\n' "$STATE_FILE" "$active_color" >&2
-    exit 1
-    ;;
-esac
 
 rollback() {
   printf 'Deployment failed; keeping %s active and stopping %s.\n' "$active_color" "$inactive_color" >&2

@@ -92,8 +92,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Changer la couleur du déploiement un run sur deux
       - name: Deploy blue-green environment
         working-directory: starter-app
         run: |
+          if (( GITHUB_RUN_NUMBER % 2 == 0 )); then
+            echo "DEPLOY_TARGET_COLOR=blue" >> "$GITHUB_ENV"
+          else
+            echo "DEPLOY_TARGET_COLOR=green" >> "$GITHUB_ENV"
+          fi
           chmod +x deploy/deploy.sh
           ./deploy/deploy.sh
