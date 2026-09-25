@@ -1,11 +1,18 @@
 import os
 
 import redis
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 
 app = Flask(__name__)
 
 ALERT_THRESHOLD = 25
+
+http_requests_total = Counter(
+    "http_requests_total",
+    "Nombre total de requetes HTTP recues",
+    labelnames=("method", "endpoint", "status"),
+)
 
 
 def alert_threshold():
@@ -24,6 +31,24 @@ def get_redis_client():
         port=int(os.getenv("REDIS_PORT", "6379")),
         decode_responses=True,
     )
+
+
+@app.after_request
+def after_request(response):
+    if request.path == "/metrics":
+        return response
+
+    http_requests_total.labels(
+        method=request.method,
+        endpoint=request.path,
+        status=str(response.status_code),
+    ).inc()
+    return response
+
+
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
 
 
 @app.route("/health")

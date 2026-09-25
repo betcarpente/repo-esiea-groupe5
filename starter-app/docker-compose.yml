@@ -1,33 +1,12 @@
 services:
-  app-blue:
+  app:
     build: .
-    profiles:
-      - blue
+    ports:
+      - "5000:5000"
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      DEPLOY_COLOR: blue
-      DEPLOY_SHA: ${DEPLOY_SHA:-local}
-    networks:
-      - app-network
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  app-green:
-    build: .
-    profiles:
-      - green
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      DEPLOY_COLOR: green
+      DEPLOY_COLOR: local
       DEPLOY_SHA: ${DEPLOY_SHA:-local}
     networks:
       - app-network

@@ -2,9 +2,9 @@ FROM python:3.12 AS builder
 
 WORKDIR /build
 
-COPY requirements-runtime.txt .
+COPY requirements.txt .
 RUN python -m venv /opt/venv \
-	&& /opt/venv/bin/pip install --no-cache-dir -r requirements-runtime.txt
+	&& /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.12-slim
 
