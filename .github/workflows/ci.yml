@@ -88,6 +88,8 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    env:
+      DEPLOY_SHA: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4

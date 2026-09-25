@@ -45,6 +45,7 @@ def status():
         service="projet-devops-groupe-demo",
         version="1.0",
         deploy_color=os.getenv("DEPLOY_COLOR", "unknown"),
+        deployment_sha=os.getenv("DEPLOY_SHA", "local"),
     ), 200
 
 

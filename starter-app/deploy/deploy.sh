@@ -8,6 +8,7 @@ COMPOSE_FILE="$APP_DIR/docker-compose.yml"
 NGINX_CONF="$APP_DIR/nginx/default.conf"
 STATE_FILE="$SCRIPT_DIR/active_color"
 MAX_ATTEMPTS=12
+EXPECTED_SHA=${DEPLOY_SHA:-}
 
 compose() {
   if command -v docker-compose >/dev/null 2>&1; then
@@ -77,6 +78,16 @@ case "$status" in
     exit 1
     ;;
 esac
+
+if [ -n "$EXPECTED_SHA" ]; then
+  case "$status" in
+    *"\"deployment_sha\":\"$EXPECTED_SHA\""*) ;;
+    *)
+      printf 'Smoke test failed: expected deployment_sha=%s, got %s\n' "$EXPECTED_SHA" "$status" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 sed -i "s/set \$upstream app-$active_color;/set \$upstream app-$inactive_color;/" "$NGINX_CONF"
 compose exec -T nginx nginx -s reload

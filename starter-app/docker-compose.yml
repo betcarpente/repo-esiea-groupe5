@@ -7,6 +7,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DEPLOY_COLOR: blue
+      DEPLOY_SHA: ${DEPLOY_SHA:-local}
     networks:
       - app-network
     depends_on:
@@ -27,6 +28,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DEPLOY_COLOR: green
+      DEPLOY_SHA: ${DEPLOY_SHA:-local}
     networks:
       - app-network
     depends_on:

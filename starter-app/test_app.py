@@ -42,3 +42,4 @@ def test_status_endpoint():
     assert response.status_code == 200
     assert response.get_json()["service"] == "projet-devops-groupe-demo"
     assert response.get_json()["deploy_color"] == "unknown"
+    assert response.get_json()["deployment_sha"] == "local"
