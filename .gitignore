@@ -3,6 +3,8 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+files/
+files/*
 # C extensions
 *.so
 
@@ -256,6 +258,9 @@ $RECYCLE.BIN/
 node_modules/
 npm-debug.log*
 yarn-debug.log*
+
+# Etat local du deploiement blue/green
+starter-app/deploy/active_color
 yarn-error.log*
 .pnpm-debug.log*
 
