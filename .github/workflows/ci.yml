@@ -11,6 +11,7 @@ permissions:
   packages: write
 
 jobs:
+  # Exécuter le linting du code Python
   lint:
     runs-on: ubuntu-latest
 
@@ -30,6 +31,7 @@ jobs:
         working-directory: starter-app
         run: flake8 --config=flake8-config.txt .
 
+  # Exécuter les tests unitaires (pytest)
   test:
     needs: lint
     runs-on: ubuntu-latest
@@ -50,6 +52,7 @@ jobs:
         working-directory: starter-app
         run: pytest -v
 
+  # Construire et pousser l'image Docker (sur ghcr.io/<repo>/<commit>)
   build-and-push:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -78,3 +81,19 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+  # Déployer l'application en environnement de production blue green
+  deploy:
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy blue-green environment
+        working-directory: starter-app
+        run: |
+          chmod +x deploy/deploy.sh
+          ./deploy/deploy.sh

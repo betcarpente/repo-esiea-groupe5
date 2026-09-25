@@ -10,10 +10,20 @@ STATE_FILE="$SCRIPT_DIR/active_color"
 MAX_ATTEMPTS=12
 
 compose() {
-  docker-compose -f "$COMPOSE_FILE" "$@"
+  if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose -f "$COMPOSE_FILE" "$@"
+  else
+    docker compose -f "$COMPOSE_FILE" "$@"
+  fi
 }
 
-active_color=$(cat "$STATE_FILE" 2>/dev/null || printf 'blue')
+if [ -f "$STATE_FILE" ]; then
+  active_color=$(cat "$STATE_FILE")
+elif grep -q "set \$upstream app-green;" "$NGINX_CONF"; then
+  active_color=green
+else
+  active_color=blue
+fi
 case "$active_color" in
   blue) inactive_color=green ;;
   green) inactive_color=blue ;;
