@@ -1,8 +1,9 @@
 import os
+import time
 
 import redis
 from flask import Flask, jsonify, request
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 app = Flask(__name__)
 
@@ -10,8 +11,15 @@ ALERT_THRESHOLD = 25
 
 http_requests_total = Counter(
     "http_requests_total",
-    "Nombre total de requetes HTTP recues",
+    "total HTTP requests received",
     labelnames=("method", "endpoint", "status"),
+)
+
+request_duration_seconds = Histogram(
+    "request_duration_seconds",
+    "HTTP request processing time in seconds",
+    labelnames=("method", "endpoint", "status"),
+    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
 )
 
 
@@ -33,6 +41,11 @@ def get_redis_client():
     )
 
 
+@app.before_request
+def before_request():
+    request._start_time = time.perf_counter()
+
+
 @app.after_request
 def after_request(response):
     if request.path == "/metrics":
@@ -43,6 +56,13 @@ def after_request(response):
         endpoint=request.path,
         status=str(response.status_code),
     ).inc()
+
+    duration = time.perf_counter() - request._start_time
+    request_duration_seconds.labels(
+        method=request.method,
+        endpoint=request.path,
+        status=str(response.status_code),
+    ).observe(duration)
     return response
 
 
@@ -72,6 +92,11 @@ def status():
         deploy_color=os.getenv("DEPLOY_COLOR", "unknown"),
         deployment_sha=os.getenv("DEPLOY_SHA", "local"),
     ), 200
+
+
+@app.route("/simulate-error")
+def simulate_error():
+    return jsonify(error="simulation d'erreur"), 500
 
 
 @app.route("/visits")
